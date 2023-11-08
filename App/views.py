@@ -1,10 +1,14 @@
+from django.utils.decorators import method_decorator
 from django.contrib.auth.hashers import make_password
 from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.views import View
+
 from App.models  import *
 import datetime
 from django.db.models import Q
+from App.extensions.auth import *
 
 # Create your views here.
 
@@ -64,31 +68,33 @@ def search_music(request):
     return JsonResponse({'music_list': music_list})
 
 #根据id展示相应id的收藏表
-def collect_list(request):
-    user = request.GET.get('user_id',None)
-    page_number = request.GET.get('page',1)
-    per_page = 5
-    uid = User.objects.get(User_id=user)
-    all_data = uid.collect.all()
-    paginator = Paginator(all_data, per_page)
-    current_page = paginator.page(page_number)
-    collectlist =[
-        {
-            'name': music.music_name,
-            'id': music.music_id,
-            'author': music.singer,
-            'duration': music.longtime,
-            'description': music.description,
-            'type':music.music_type.type_name
+class usercollect(View):
+    def get(self,request,*args, **kwargs):
+        user = request.jwt_payload.get('userid')
+        page_number = request.GET.get('page',1)
+        per_page = 5
+        uid = User.objects.get(User_id=user)
+        all_data = uid.collect.all()
+        paginator = Paginator(all_data, per_page)
+        current_page = paginator.page(page_number)
+        collectlist =[
+            {
+                'name': music.music_name,
+                'id': music.music_id,
+                'author': music.singer,
+                'duration': music.longtime,
+                'description': music.description,
+                'type':music.music_type.type_name
 
-        } for music in current_page
-    ]
-    return JsonResponse({'collect_list':collectlist})
+            } for music in current_page
+        ]
+        return JsonResponse({'collect_list':collectlist})
 
 #根据id和曲目id添加相应的收藏表
 def add_collect(request):
+
     music_collect = request.GET.get('music_id')
-    user = request.GET.get('user_id')
+    user = request.jwt_payload.get('userid')
     collectmusic = Music.objects.get(music_id=music_collect)
     collect_user = User.objects.get(User_id=user)
     if collect_user.collect.filter(music_id=music_collect):
@@ -100,7 +106,7 @@ def add_collect(request):
 #根据id和曲目id删除相应的收藏表
 def dele_collect(request):
     music_collect = request.GET.get('music_id')
-    user = request.GET.get('user_id')
+    user = request.jwt_payload.get('userid')
     collect_user = User.objects.get(User_id=user)
     if collect_user.collect.filter(music_id=music_collect):
         collect_user.collect.filter(music_id=music_collect).delete()
@@ -132,3 +138,20 @@ def login(request):
         return response
     else:
         return JsonResponse({'message': '密码或户名错误'})
+
+#JWT实现登陆
+
+# @method_decorator(JwtQueryParamMiddleware,name='dispatch')
+class LoginView(View):
+    def post(self, request, *args, **kwargs):
+        user = request.POST.get('username')
+        pwd = request.POST.get('password')
+        users = User.objects.filter(User_name=user, Password=pwd)
+
+        if users.exists():
+            user = users.first()
+            token = create_token({'userid': user.User_id})
+            return JsonResponse({'status': True, 'token': token})
+
+        else:
+            return JsonResponse({'status': False, 'error': '用户名或密码错误'})

@@ -19,13 +19,14 @@ from django.urls import path
 from App.views import *
 
 urlpatterns = [
-    path('user_collect/',collect_list),
+    path('user_collect/',usercollect.as_view()),
     path('add_collect/',add_collect),
     path('sercher/',search_music),
     path('page/',paginate),
     path('admin/', admin.site.urls),
     path('del_collect/',dele_collect),
     path('register/',register_user),
-    path('login/',login)
+    path('login/',login),
+    path('loginJWT/',LoginView.as_view())
 
 ]

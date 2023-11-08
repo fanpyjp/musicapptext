@@ -4,7 +4,7 @@ from django.db import models
 class User(models.Model):
     User_id = models.AutoField(auto_created=True,primary_key=True)
     User_name = models.CharField(max_length=20,unique=True)
-    Password = models.IntegerField(max_length=30)
+    Password = models.CharField(max_length=100)
     collect = models.ManyToManyField('Music')
 
 class MusicType(models.Model):
